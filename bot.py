@@ -85,8 +85,10 @@ async def daftar(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         ok, pesan = sheets.daftar_teknisi(tid, nik, update.effective_user.full_name)
     except Exception as e:
-        await update.message.reply_text(f"Gagal mendaftar: {e}")
-        await _japri_admin(ctx, f"Error /daftar: {e}")
+        await update.message.reply_text(
+            "Maaf, sistem sedang gangguan saat menyimpan data. "
+            "Admin sudah diberi tahu. Coba lagi beberapa saat.")
+        await _japri_admin(ctx, f"Error /daftar (user {tid}, nik {nik}): {e}")
         return
     await update.message.reply_text(pesan)
 
@@ -109,8 +111,9 @@ async def hadir(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         reg = sheets.ambil_registrasi()
     except Exception as e:
-        await update.message.reply_text(f"Gangguan baca data: {e}")
-        await _japri_admin(ctx, f"Error baca registrasi: {e}")
+        await update.message.reply_text(
+            "Maaf, sistem sedang gangguan. Admin sudah diberi tahu. Coba lagi sebentar.")
+        await _japri_admin(ctx, f"Error baca registrasi (user {tid}): {e}")
         return
     if str(tid) not in reg:
         await update.message.reply_text(
@@ -272,6 +275,13 @@ def main():
     kurang = config.validasi()
     if kurang:
         raise SystemExit("Variable wajib belum di-set: " + ", ".join(kurang))
+
+    # cek kredensial lebih awal -> error jelas di Deploy Logs, bukan saat user pakai
+    try:
+        sheets._muat_creds_dict()
+        print("GOOGLE_CREDS_JSON terbaca OK.")
+    except Exception as e:
+        raise SystemExit(f"GOOGLE_CREDS_JSON bermasalah: {e}")
 
     app = Application.builder().token(config.BOT_TOKEN).build()
 
