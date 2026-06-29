@@ -22,10 +22,40 @@ _SCOPES = [
 _gc = None
 
 
+def _muat_creds_dict():
+    """Terima isi GOOGLE_CREDS_JSON dalam bentuk JSON mentah ATAU base64.
+    Mengembalikan dict credentials. Melempar ValueError dengan pesan jelas
+    bila tidak bisa di-parse.
+    """
+    raw = (config.GOOGLE_CREDS_JSON or "").strip()
+    if not raw:
+        raise ValueError("GOOGLE_CREDS_JSON kosong. Isi di Railway Variables.")
+
+    # 1) coba sebagai JSON mentah dulu
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    # 2) coba sebagai base64 -> JSON
+    import base64
+    try:
+        decoded = base64.b64decode(raw, validate=True).decode("utf-8")
+        return json.loads(decoded)
+    except Exception:
+        pass
+
+    raise ValueError(
+        "GOOGLE_CREDS_JSON tidak bisa dibaca sebagai JSON maupun base64. "
+        "Pastikan isinya tepat satu objek credentials (mentah atau base64), "
+        "tidak terpotong dan tidak tertempel dobel."
+    )
+
+
 def _client():
     global _gc
     if _gc is None:
-        info = json.loads(config.GOOGLE_CREDS_JSON)
+        info = _muat_creds_dict()
         creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
         _gc = gspread.authorize(creds)
     return _gc
